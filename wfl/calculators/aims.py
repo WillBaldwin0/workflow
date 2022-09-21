@@ -20,6 +20,13 @@ __default_keep_files = ["*"]
 __default_properties = ["energy", "forces", "stress"]
 
 
+# used for collecting time and numbe of scf cycles by default
+def reverse_search_for(lines_obj, keys, line_start=0):
+    for ll, line in enumerate(lines_obj[line_start:][::-1]):
+        if any([key in line for key in keys]):
+            return len(lines_obj) - ll - 1
+
+
 def evaluate_op(
     atoms,
     base_rundir=None,
@@ -147,6 +154,21 @@ def evaluate_op(
         calculation_succeeded = clean_failed_results(at, properties, output_prefix, calculation_succeeded)
 
         clean_rundir(rundir, keep_files, __default_keep_files, calculation_succeeded)
+
+        # add time and num scf to atoms
+        try:
+            with open(os.path.join(rundir, 'aims.out')) as f:
+                lines = f.readlines()
+
+                line_start = reverse_search_for(lines, ["Detailed time accounting"]) + 1
+                tot_time = float(lines[line_start].split(":")[-1].strip().split()[0])
+                at.info['calculation_time'] = tot_time
+
+                line_start = reverse_search_for(lines, ["| Number of self-consistency cycles"])
+                num_scf = float(lines[line_start].split(":")[-1].strip().split()[0])
+                at.info['number_of_scf_cylces'] = num_scf
+        except:
+            pass
 
     if isinstance(atoms, Atoms):
         return at_list[0]
