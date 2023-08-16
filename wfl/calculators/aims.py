@@ -16,9 +16,13 @@ from ase.calculators.aims import Aims, AimsProfile
 from .utils import clean_rundir, handle_nonperiodic, save_results, clean_failed_results
 from ..utils.misc import atoms_to_list
 
+
+from .read_aims_multipoles import read_multipoles_from_output_file, change_conventions
+
+
 # NOMAD compatible, see https://nomad-lab.eu/prod/rae/gui/uploads
 __default_keep_files = ["*"]
-__default_properties = ["energy", "forces", "stress"]
+__default_properties = ["energy", "forces", "stress", "free_energy"]
 
 
 # used for collecting time and numbe of scf cycles by default
@@ -115,9 +119,15 @@ def evaluate_autopara_wrappable(
 
     assert(all([at.pbc[0] == pbc for at in at_list]))
 
-    has_kdensity = "k_grid_density" in calculator_kwargs
+    has_kdensity = "k_grid_density" in calculator_kwargs or "kpts" in calculator_kwargs or "k_grid" in calculator_kwargs
     requires_stresses = "compute_analytical_stress" in calculator_kwargs
+
+    print(has_kdensity)
+    print(requires_stresses)
+    print(pbc)
+
     assert(has_kdensity == pbc and requires_stresses == pbc)
+    
 
     # don't do this
     if 'aims_command' in calculator_kwargs:
@@ -166,6 +176,20 @@ def evaluate_autopara_wrappable(
                 at.info['number_of_scf_cylces'] = num_scf
         except:
             pass
+
+        ylms = False
+        if ylms:
+            # due to a fear of inconsistencies at this point, save all info from both atoms objects into the first object
+            # positions
+            # at.arrays['mpole_cube_positions'] = cubeatt.positions
+            multipoles = read_multipoles_from_output_file(rundir, at.get_global_number_of_atoms(), 2)
+
+            at.arrays['DMA_coeficients'] = multipoles
+            at.arrays['modifed_DMA_coeficients'] = change_conventions(multipoles, 2)
+            
+            # total moments
+            #at.info['total_multipoles'] = total_moments
+
 
     if isinstance(atoms, Atoms):
         return at_list[0]
