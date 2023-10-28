@@ -7,7 +7,7 @@ import time
 import os
 import pathlib
 import tempfile
-
+import numpy as np
 from ase import Atoms
 from ase.calculators.calculator import all_changes, CalculationFailed
 from ase.calculators.aims import Aims, AimsProfile
@@ -177,8 +177,12 @@ def evaluate_autopara_wrappable(
         except:
             pass
 
-        ylms = False
-        if ylms:
+        # save polarization if it was computed
+        if "output" in calculator_kwargs:
+            has_ylms = any(["hartree_multipoles" in out for out in calculator_kwargs["output"]])
+        else:
+            has_ylms = False
+        if has_ylms:
             # due to a fear of inconsistencies at this point, save all info from both atoms objects into the first object
             # positions
             # at.arrays['mpole_cube_positions'] = cubeatt.positions
@@ -189,6 +193,22 @@ def evaluate_autopara_wrappable(
             
             # total moments
             #at.info['total_multipoles'] = total_moments
+
+        # save polarization if it was computed
+        if "output" in calculator_kwargs:
+            has_polarization = any(["polarization" in out for out in calculator_kwargs["output"]])
+        else:
+            has_polarization = False
+        
+        if has_polarization:
+            with open(os.path.join(rundir, 'aims.out')) as f:
+                lines = f.readlines()
+
+                line_start = reverse_search_for(lines, ["Cartesian Polarization"])
+
+                polarization = [ float(lines[line_start].split()[i]) for i in [-3,-2,-1]]
+                at.info['AIMS_polarization'] = np.asarray(polarization)
+
 
 
     if isinstance(atoms, Atoms):
