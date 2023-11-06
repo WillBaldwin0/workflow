@@ -119,16 +119,6 @@ def evaluate_autopara_wrappable(
 
     assert(all([at.pbc[0] == pbc for at in at_list]))
 
-    has_kdensity = "k_grid_density" in calculator_kwargs or "kpts" in calculator_kwargs or "k_grid" in calculator_kwargs
-    requires_stresses = "compute_analytical_stress" in calculator_kwargs
-
-    print(has_kdensity)
-    print(requires_stresses)
-    print(pbc)
-
-    assert(has_kdensity == pbc and requires_stresses == pbc)
-    
-
     # don't do this
     if 'aims_command' in calculator_kwargs:
         raise ValueError('unexpected key aims_command in the aims kwargs dicitionary')
